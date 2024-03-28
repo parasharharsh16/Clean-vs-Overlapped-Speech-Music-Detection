@@ -5,6 +5,7 @@ from param import (
     sample_universe_size,
     data_dir,
     hyper_parameters as hp,
+    model_1,
 )
 from torch.utils.data import ConcatDataset
 from MTL_w_cascade_info import MtlCascadeModel
@@ -14,9 +15,8 @@ import torch
 import os
 from torch import nn
 
-
+data_file = os.path.join(data_dir, "dataset.pth")
 if "dataset.pth" in os.listdir(data_dir):
-    data_file = os.path.join(data_dir, "dataset.pth")
     combined_dataset = torch.load(data_file)
 else:
     # Prepare data
@@ -30,7 +30,7 @@ else:
     combined_dataset = ConcatDataset(
         [datasets_music, datasets_speech, datasets_mixture]
     )
-    torch.save(combined_dataset, "dataset.pth")
+    torch.save(combined_dataset, data_file)
 
 
 print("data_loader")
@@ -105,3 +105,6 @@ for epoch in range(1, hp["n_epochs"] + 1):
     train(
         train_loader, model, epoch, out_dict, loss_sp, loss_mu, loss_smr, optimizer
     )  # noqa
+
+torch.save(model.state_dict(), model_1)
+# torch.save(model, f"{model_1}.model")

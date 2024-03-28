@@ -1,7 +1,7 @@
 # data Directory and Paths
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
-sample_universe_size = 0.003
+sample_universe_size = 0.01
 
 # Data Prep Parameters
 types_allowed = ["music", "speech"]
@@ -23,3 +23,5 @@ hyper_parameters = {
     "batch_size": 20,
     "train_ratio": 0.8,
 }
+model_dir = r"./model"
+model_1 = f"{model_dir}/model_{sample_universe_size}.pth"
