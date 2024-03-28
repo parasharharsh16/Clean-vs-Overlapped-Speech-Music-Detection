@@ -1,7 +1,8 @@
 # data Directory and Paths
+sample_universe_size = 0.01
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
-sample_universe_size = 0.001
+data_file = f"{data_dir}/dataset_{sample_universe_size}.pth"
 
 # Data Prep Parameters
 types_allowed = ["music", "speech"]
@@ -11,6 +12,7 @@ sampling_rate = 16000  # assuming both files have the same sampling rate
 decibel_range = [-5, 5]
 
 # model Parameters
+targ_dict = {"speech": [1, 0, 0], "music": [0, 1, 0], "mixture": [0, 0, 1]}
 hyper_parameters = {
     "n_layers": 1,
     "sp_hidden_nodes": 20,
