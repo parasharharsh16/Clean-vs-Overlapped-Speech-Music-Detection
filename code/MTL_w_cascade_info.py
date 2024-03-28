@@ -69,8 +69,11 @@ class MtlCascadeModel(nn.Module):
 
         # Output layers
         y3_sp = self.output_sp(y2_sp)
+        y3_sp = torch.sigmoid(y3_sp)
         y3_mu = self.output_mu(y2_mu)
+        y3_mu = torch.sigmoid(y3_mu)
         y3_smr = self.output_smr(y2_smr)
+        y3_smr = torch.sigmoid(y3_smr)
 
         # print(y3_smr.shape)
         # print(y3_smr)

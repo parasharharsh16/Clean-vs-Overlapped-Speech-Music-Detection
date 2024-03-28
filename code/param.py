@@ -1,7 +1,7 @@
 # data Directory and Paths
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
-sample_universe_size = 0.01
+sample_universe_size = 0.001
 
 # Data Prep Parameters
 types_allowed = ["music", "speech"]
