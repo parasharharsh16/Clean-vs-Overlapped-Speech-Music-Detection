@@ -72,7 +72,7 @@ def prepare_data(dataset_path):
     combinations = product(df_music['path'], df_speech['path'])
     df_combined = pd.DataFrame(combinations, columns=['music', 'speech'])
     df_unique_combinations =  df_combined.drop_duplicates(subset=['music', 'speech'], keep=False)
-    df_combined.to_csv('data/speech_music_combinations.csv', index=False)
+    # df_combined.to_csv('data/speech_music_combinations.csv', index=False)
 
     return df_combined
 
