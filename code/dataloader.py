@@ -6,6 +6,12 @@ import numpy as np
 import torch
 from librosa.feature import melspectrogram
 from librosa import power_to_db
+from multiprocessing import Pool
+from tqdm import tqdm
+
+# import time
+# start_time = time.time()
+
 
 # Define the SignalDataset class to store the data in required format
 class SignalDataset(Dataset):
@@ -24,26 +30,38 @@ class SignalDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.label[idx]
     
+    def process_row(self, args):
+        row, type_ = args
+        if type_ == "mixture":
+            return self.get_spectogram_mix(row)
+        else:
+            return self.get_spectogram_signal(row)
+    
     def load_data(self):
+        lable_list = [self.type]*len(self.sampled_df)
         data_list = []
-        label_list = []
-        for row in self.sampled_df.iterrows():
-            for item in ["music","speech","mixture"]:
-                if(self.type == item):
-                    if item == "mixture":
-                        data = mix_signals(row[1]['speech'], row[1]['music'])
-                        label = "mixture"
-                    else:
-                        data = load_music(row[1][item])
-                        label = item
-                    # Create a MelSpectrogram object
-                    mel_spectrogram = melspectrogram(y=data,sr=sampling_rate)
-                    spect_decib = power_to_db(mel_spectrogram, ref=np.max)
-                    spec_tensor = torch.from_numpy(spect_decib)
-                    data_list.append(spec_tensor)
-                    label_list.append(label)
 
-        return data_list, label_list
+        with Pool() as p:
+            data_list = list(tqdm(p.imap(self.process_row, [(row, self.type) for _, row in self.sampled_df.iterrows()]), total=len(self.sampled_df)))
+
+        return data_list, lable_list
+    
+    def get_spectogram_mix(self,row):
+        data_list = []
+        label_list = [self.type]*len(self.sampled_df)
+        data = mix_signals(row['speech'], row['music'])   
+        mel_spectrogram = melspectrogram(y=data,sr=sampling_rate)
+        spect_decib = power_to_db(mel_spectrogram, ref=np.max)
+        spec_tensor = torch.from_numpy(spect_decib)
+        return spec_tensor
+    
+    def get_spectogram_signal(self,row):
+        data = load_music(row[self.type])
+        mel_spectrogram = melspectrogram(y=data,sr=sampling_rate)
+        spect_decib = power_to_db(mel_spectrogram, ref=np.max)
+        spec_tensor = torch.from_numpy(spect_decib)
+        return spec_tensor
+        
 
 
 # Function to load the data for training and testing
@@ -55,7 +73,7 @@ def dataloader(datasets,train_ratio = 0.8,train_batch_size =20,test_batch_size =
     test_loader = DataLoader(test_dataset, batch_size=test_batch_size, shuffle=True)
     return train_loader,test_loader
 
-##Call this code in train and evaluate functions (to be deleted later)
+#Call this code in train and evaluate functions (to be deleted later)
 # combination_paths = prepare_data(dataset_path)
 # sampled_df = combination_paths.sample(frac=sample_universe_size, random_state=42,ignore_index=True)
 
@@ -67,3 +85,8 @@ def dataloader(datasets,train_ratio = 0.8,train_batch_size =20,test_batch_size =
 
 # datasets_mixture = SignalDataset(sampled_df, data_type="mixture")
 # train_loader_mixture,test_loader_mixture = dataloader(datasets=datasets_mixture,train_ratio = 0.8,train_batch_size =20,test_batch_size =20)
+
+# end_time = time.time()
+
+# total_time = end_time - start_time
+# print(f"Total runtime of the script is {total_time} seconds")
