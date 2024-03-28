@@ -4,3 +4,4 @@ torchaudio
 numpy
 librosa
 pandas
+pytorch-tcn
