@@ -3,20 +3,22 @@ from utils import prepare_data
 from param import (
     dataset_path,
     sample_universe_size,
-    data_dir,
     hyper_parameters as hp,
     model_1,
+    targ_dict as out_dict,
+    data_file,
 )
 from torch.utils.data import ConcatDataset
 from MTL_w_cascade_info import MtlCascadeModel
-from torch.optim import Adam  # , SGD
+from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import ExponentialLR
 import torch
 import os
 from torch import nn
+import torch.backends.cudnn as cudnn
 
-data_file = os.path.join(data_dir, "dataset.pth")
-if "dataset.pth" in os.listdir(data_dir):
+
+if os.path.exists(data_file):
     combined_dataset = torch.load(data_file)
 else:
     # Prepare data
@@ -51,19 +53,21 @@ def train(
     loss_mu_fn,
     loss_smr_fn,
     optimizer,
+    device,
 ):
     correct = 0
     for data in train_loader:
         feature, label = data
+        feature = feature.to(device)
         y = [out_dict[x] for x in label]
         out_sp, out_mu, out_smr = model(feature)
 
         sp_list = [inner_list[0] for inner_list in y]
         mu_list = [inner_list[1] for inner_list in y]
-        smr_list = [inner_list[2:] for inner_list in y]
-        y_sp = torch.Tensor(sp_list).unsqueeze(1)
-        y_mu = torch.Tensor(mu_list).unsqueeze(1)
-        y_smr = torch.Tensor(smr_list).unsqueeze(1)
+        smr_list = [inner_list[2] for inner_list in y]
+        y_sp = torch.Tensor(sp_list).unsqueeze(1).to(device)
+        y_mu = torch.Tensor(mu_list).unsqueeze(1).to(device)
+        y_smr = torch.Tensor(smr_list).unsqueeze(1).to(device)
 
         loss_sp = loss_sp_fn(out_sp, y_sp)
         loss_mu = loss_mu_fn(out_mu, y_mu)
@@ -76,7 +80,7 @@ def train(
 
         pred_y = torch.cat((out_sp, out_mu, out_smr), dim=1)
         result = (pred_y > 0.5).float()
-        target = torch.tensor(y).float()
+        target = torch.tensor(y).float().to(device)
         for i in range(result.size(0)):
             if torch.all(torch.eq(result[i], target[i])):
                 correct += 1
@@ -86,25 +90,35 @@ def train(
     )
 
 
+# Check if GPU is available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
+
+# Enable cuDNN if available
+if device.type == "cuda":
+    cudnn.benchmark = True
+
+
 print("model_init")
 model = MtlCascadeModel(hp)
-# print(model)
+# Move model to GPU
+model.to(device)
+
+
 loss_sp = nn.BCEWithLogitsLoss()
 loss_mu = nn.BCEWithLogitsLoss()
-loss_smr = nn.MSELoss()
-
-out_dict = {"speech": [1, 0, 0, 0], "music": [0, 1, 0, 0], "mixture": [0, 0, 1, 1]}
+loss_smr = nn.BCEWithLogitsLoss()
 
 # Optimizer and learning rate scheduler
 optimizer = Adam(model.parameters(), lr=0.002)
 # optimizer = SGD(model.parameters(), lr=0.002, momentum=0.9)
-scheduler = ExponentialLR(optimizer, gamma=0.1)
+# scheduler = ExponentialLR(optimizer, gamma=0.1)
+optimizer = optimizer
 
 print("start_training")
 for epoch in range(1, hp["n_epochs"] + 1):
     train(
-        train_loader, model, epoch, out_dict, loss_sp, loss_mu, loss_smr, optimizer
+        train_loader, model, epoch, out_dict, loss_sp, loss_mu, loss_smr, optimizer, device
     )  # noqa
 
 torch.save(model.state_dict(), model_1)
-# torch.save(model, f"{model_1}.model")

@@ -34,10 +34,7 @@ class MtlCascadeModel(nn.Module):
         # Output layers
         self.output_sp = nn.Linear(hp["sp_hidden_nodes"], 1)
         self.output_mu = nn.Linear(hp["mu_hidden_nodes"], 1)
-        self.output_smr = nn.Linear(hp["smr_hidden_nodes"], 2)
-
-        # self.softmax = nn.Softmax(dim=1)
-        # self.softmax2 = nn.Softmax(dim=1)
+        self.output_smr = nn.Linear(hp["smr_hidden_nodes"], 1)
 
     def make_layers(self, hidden_nodes, num_layers):
         layers = []
@@ -52,17 +49,10 @@ class MtlCascadeModel(nn.Module):
         # TCN
         # x = x.transpose(1, 2)
         y1 = self.tcn(x)
-        y2 = y1.view(y1.size(0), -1)
         # Flatten TCN output
+        y2 = y1.view(y1.size(0), -1)
         y3 = self.linear(y2)
-        # y1 = torch.transpose(y1, 0, 1)
 
-        # y1 = self.tcn(x.transpose(1, 2)).transpose(1, 2)
-        # y1 = y1.contiguous().view(y1.size(0), -1)
-
-        # Dense layers
-        # print(y2.shape)
-        # print(y3.shape)
         y2_sp = self.dense_sp(y3)
         y2_mu = self.dense_mu(y3)
         y2_smr = self.dense_smr(y3)
@@ -75,11 +65,4 @@ class MtlCascadeModel(nn.Module):
         y3_smr = self.output_smr(y2_smr)
         y3_smr = torch.sigmoid(y3_smr)
 
-        # print(y3_smr.shape)
-        # print(y3_smr)
-        # out_sp = self.softmax(y3_sp)
-        # out_mu = self.softmax(y3_mu)
-        # out_smr = self.softmax(y3_smr)
         return y3_sp, y3_mu, y3_smr
-
-
