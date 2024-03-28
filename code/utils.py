@@ -1,12 +1,24 @@
 import librosa
+import torch
 import torchaudio
 import numpy as np
 import random
-from param import sampling_rate, frame_size,decibel_range,types_allowed,dataset_path
 import os
 import pandas as pd
 from itertools import product
-
+# from dataloader import dataloader, SignalDataset
+# from dataloader import SignalDataset
+from param import (
+    dataset_path,
+    sample_universe_size,
+    hyper_parameters as hp,
+    data_file,
+    sampling_rate,
+    frame_size,
+    decibel_range,
+    types_allowed,
+    targ_dict
+)
 
 def change_volume(audio_signal, sr, change_db):
     # Calculate the amplitude ratio from the decibel change
@@ -89,3 +101,94 @@ def load_music(music_audio_path):
     music_frame = music[start_frame:start_frame + frame_size]
 
     return music_frame
+
+
+
+def train(
+    train_loader,
+    model,
+    epoch,
+    out_dict,
+    loss_sp_fn,
+    loss_mu_fn,
+    loss_smr_fn,
+    optimizer,
+    device,
+):
+    correct = 0
+    for data in train_loader:
+        feature, label = data
+        feature = feature.to(device)
+        y = [out_dict[x] for x in label]
+        out_sp, out_mu, out_smr = model(feature)
+
+        sp_list = [inner_list[0] for inner_list in y]
+        mu_list = [inner_list[1] for inner_list in y]
+        smr_list = [inner_list[2] for inner_list in y]
+        y_sp = torch.Tensor(sp_list).unsqueeze(1).to(device)
+        y_mu = torch.Tensor(mu_list).unsqueeze(1).to(device)
+        y_smr = torch.Tensor(smr_list).unsqueeze(1).to(device)
+
+        loss_sp = loss_sp_fn(out_sp, y_sp)
+        loss_mu = loss_mu_fn(out_mu, y_mu)
+        loss_smr = loss_smr_fn(out_smr, y_smr)
+
+        total_loss = loss_sp + loss_mu + loss_smr
+        optimizer.zero_grad()
+        total_loss.backward()
+        optimizer.step()
+
+        pred_y = torch.cat((out_sp, out_mu, out_smr), dim=1)
+        result = (pred_y > 0.5).float()
+        target = torch.tensor(y).float().to(device)
+        for i in range(result.size(0)):
+            if torch.all(torch.eq(result[i], target[i])):
+                correct += 1
+    accuracy = correct / len(train_loader.dataset)
+    print(
+        f"Epoch: {epoch}, Loss_sp: {loss_sp}, Loss_mu: {loss_mu}, Loss_smr: {loss_smr}, Accuracy: {accuracy}"  # noqa
+    )
+
+
+def evaluate(model, test_loader, device):
+    model.eval()
+    su_predictions = []
+    mu_predictions = []
+    smr_predictions = []
+    su_target = []
+    mu_target = []
+    smr_target = []
+    for data in test_loader:
+        feature, target = data
+        su_pred,mu_pred,smr_pred = model(feature)
+        su_predictions.append((su_pred  > 0.5).float())
+        mu_predictions.append((mu_pred  > 0.5).float())
+        smr_predictions.append((smr_pred  > 0.5).float())
+        su_target.append(float(targ_dict[target[0]][0]))
+        mu_target.append(float(targ_dict[target[0]][1]))
+        smr_target.append(float(targ_dict[target[0]][2]))
+
+    return su_predictions, mu_predictions, smr_predictions, su_target, mu_target, smr_target
+
+def calculate_metrics(predictions, targets):
+    # Convert predictions and targets to tensors if they're not already
+    if not isinstance(predictions, torch.Tensor):
+        predictions = torch.tensor(predictions)
+    if not isinstance(targets, torch.Tensor):
+        targets = torch.tensor(targets)
+
+    # Calculate true positives, false positives, and false negatives
+    true_positives = torch.sum(predictions * targets).float()
+    false_positives = torch.sum(predictions * (1 - targets)).float()
+    false_negatives = torch.sum((1 - predictions) * targets).float()
+
+    # Calculate precision
+    precision = true_positives / (true_positives + false_positives + 1e-10)
+
+    # Calculate recall
+    recall = true_positives / (true_positives + false_negatives + 1e-10)
+
+    # Calculate F1 score
+    f1_score = 2 * (precision * recall) / (precision + recall + 1e-10)
+    accuracy = torch.sum(predictions == targets).float() / targets.numel()
+    return precision.item(), recall.item(), f1_score.item(),accuracy.item()
