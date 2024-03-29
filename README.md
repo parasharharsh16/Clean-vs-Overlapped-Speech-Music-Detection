@@ -1,9 +1,9 @@
-# Speech-Understanding-Minor-1
+# Speech-Understanding-Minor-Project
 
 ## Description
 This project is build intended to submit as Minor Project for Speech Understanding class at IIT, Jodhpur. 
 
-##Project Setup and Uses Steps
+## Project Setup and Uses Steps
 ### Installation
 To install and run this project, follow these steps:
 
@@ -16,7 +16,7 @@ To download the "MUSAN" dataset, please follow the below link:
 `https://www.openslr.org/resources/17/musan.tar.gz`
 
 - Unzip the downloaded TAR file and paste the musan dataset to "data" folder.
-
+```
 Speech-Understanding-Minor/
 │
 ├── code/
@@ -36,7 +36,7 @@ Speech-Understanding-Minor/
 │   └── trainedmodel.pth
 │
 └── README.md
-
+```
 
 ### Run the code
 4. Go to code/param.py and change `train_model` to  `False` to run in evaluation mode, if intending to train then you may keep it to `True`
