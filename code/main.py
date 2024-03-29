@@ -1,11 +1,11 @@
 from dataloader import dataloader, SignalDataset
-from utils import train,evaluate,calculate_metrics
+from utils import train,evaluate,calculate_metrics,plot_ROC_AUC_Curve
 from param import (
     hyper_parameters as hp,
     model_path_1,
     targ_dict as out_dict,
     train_model as bool_train_model,
-    sample_universe_size,dataset_path,data_file
+    sample_universe_size,dataset_path,data_file, plot_output_folder
 )
 
 from model_architecture import MtlCascadeModel
@@ -116,4 +116,7 @@ if __name__ == "__main__":
         print(f"Recall for {item}:", recall)
         print(f"F1 score for {item}:", f1_score)
         print(f"Accuracy for {item}:", accuracy)
+        plot_ROC_AUC_Curve(predictions,targets,item,plot_output_folder)
+        print(f"Saving ROC AUC curve for class: {item}")
         print("-------------------------------------------------\n")
+   

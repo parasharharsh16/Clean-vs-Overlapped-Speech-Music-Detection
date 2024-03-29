@@ -27,4 +27,6 @@ hyper_parameters = {
 }
 model_dir = r"./model"
 model_path_1 = f"{model_dir}/model_{sample_universe_size}.pth"
-train_model = True
+train_model = False
+
+plot_output_folder = r"./plots"
