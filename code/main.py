@@ -116,7 +116,8 @@ if __name__ == "__main__":
         print(f"Recall for {item}:", recall)
         print(f"F1 score for {item}:", f1_score)
         print(f"Accuracy for {item}:", accuracy)
+        print(f"\nCreating ROC AUC curve for class: {item}")
         plot_ROC_AUC_Curve(predictions,targets,item,plot_output_folder)
-        print(f"Saving ROC AUC curve for class: {item}")
+        
         print("-------------------------------------------------\n")
    
