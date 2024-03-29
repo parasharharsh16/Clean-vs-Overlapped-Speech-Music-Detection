@@ -198,6 +198,10 @@ def calculate_metrics(predictions, targets):
 
 
 def plot_ROC_AUC_Curve(predictions, targets, class_name, output_folder):
+    # predictions = [tensor.detach().numpy() for tensor in predictions]
+    # targets = [tensor.detach().numpy() for tensor in targets]
+    predictions = np.squeeze(predictions)
+    targets = np.squeeze(targets)
     fpr, tpr, thresholds = roc_curve(predictions, targets)
     roc_auc = auc(fpr, tpr)
 
@@ -205,15 +209,15 @@ def plot_ROC_AUC_Curve(predictions, targets, class_name, output_folder):
     plt.figure()
     plt.title(f'ROC Curve for {class_name}')
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.fill_between(fpr, tpr, color='darkorange', alpha=0.2)
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
     plt.legend(loc='lower right')
-    plt.show()
     plt.savefig(f'{output_folder}/roc_curve_{class_name}.png', )
+    print(f"Saved ROC AUC curve for class: {class_name} as roc_curve_{class_name}.png")
     plt.close()
     
 

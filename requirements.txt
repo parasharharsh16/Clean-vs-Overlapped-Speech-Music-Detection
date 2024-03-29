@@ -6,3 +6,4 @@ librosa
 pandas
 pytorch-tcn
 tqdm
+matplotlib
