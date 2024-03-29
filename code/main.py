@@ -5,9 +5,12 @@ from param import (
     model_path_1,
     targ_dict as out_dict,
     train_model as bool_train_model,
-    sample_universe_size,dataset_path,data_file, plot_output_folder
+    data_dir,
+    sample_universe_size,
+    dataset_path,data_file, 
+    plot_output_folder
 )
-
+import gc
 from model_architecture import MtlCascadeModel
 from torch.optim import Adam, SGD
 # from torch.optim.lr_scheduler import ExponentialLR
@@ -28,13 +31,23 @@ def load_train_test():
         sampled_df = combination_paths.sample(
             frac=sample_universe_size, random_state=42, ignore_index=True
         )
-        datasets_music = SignalDataset(sampled_df, data_type="music")
-        datasets_speech = SignalDataset(sampled_df, data_type="speech")
-        datasets_mixture = SignalDataset(sampled_df, data_type="mixture")
+        print("Creating datasets")
+        for item in ["speech","music","mixture"]:
+            dataset = SignalDataset(sampled_df, data_type=item)
+            torch.save(dataset, f"{data_dir}/dataset_{item}_{sample_universe_size}.pth")
+            del dataset
+            gc.collect()
+        # Create a combined dataset
+        datasets_music = torch.load(f"{data_dir}/dataset_music_{sample_universe_size}.pth")
+        datasets_speech = torch.load(f"{data_dir}/dataset_speech_{sample_universe_size}.pth")
+        datasets_mixture = torch.load(f"{data_dir}/dataset_mixture_{sample_universe_size}.pth")
+
         combined_dataset = ConcatDataset(
             [datasets_music, datasets_speech, datasets_mixture]
         )
+        del datasets_music, datasets_speech, datasets_mixture
         torch.save(combined_dataset, data_file)
+        print("Saved the combined dataset\n")
     return combined_dataset
 
 def training(model,device,train_loader,hp):

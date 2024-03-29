@@ -9,8 +9,6 @@ from itertools import product
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 
-# from dataloader import dataloader, SignalDataset
-# from dataloader import SignalDataset
 from param import (
     dataset_path,
     sample_universe_size,
@@ -87,7 +85,6 @@ def prepare_data(dataset_path):
     combinations = product(df_music['path'], df_speech['path'])
     df_combined = pd.DataFrame(combinations, columns=['music', 'speech'])
     df_unique_combinations =  df_combined.drop_duplicates(subset=['music', 'speech'], keep=False)
-    # df_combined.to_csv('data/speech_music_combinations.csv', index=False)
 
     return df_combined
 
@@ -198,8 +195,6 @@ def calculate_metrics(predictions, targets):
 
 
 def plot_ROC_AUC_Curve(predictions, targets, class_name, output_folder):
-    # predictions = [tensor.detach().numpy() for tensor in predictions]
-    # targets = [tensor.detach().numpy() for tensor in targets]
     predictions = np.squeeze(predictions)
     targets = np.squeeze(targets)
     fpr, tpr, thresholds = roc_curve(predictions, targets)
@@ -216,8 +211,8 @@ def plot_ROC_AUC_Curve(predictions, targets, class_name, output_folder):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.legend(loc='lower right')
-    plt.savefig(f'{output_folder}/roc_curve_{class_name}.png', )
-    print(f"Saved ROC AUC curve for class: {class_name} as roc_curve_{class_name}.png")
+    plt.savefig(f'{output_folder}/roc_curve_{class_name}_{sample_universe_size}.png', )
+    print(f"Saved ROC AUC curve for class: {class_name} as roc_curve_{class_name}_{sample_universe_size}.png")
     plt.close()
     
 
