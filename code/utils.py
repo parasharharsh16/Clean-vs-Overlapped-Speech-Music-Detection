@@ -84,7 +84,6 @@ def prepare_data(dataset_path):
     # Generate all combinations of music and speech paths
     combinations = product(df_music['path'], df_speech['path'])
     df_combined = pd.DataFrame(combinations, columns=['music', 'speech'])
-    df_unique_combinations =  df_combined.drop_duplicates(subset=['music', 'speech'], keep=False)
 
     return df_combined
 
