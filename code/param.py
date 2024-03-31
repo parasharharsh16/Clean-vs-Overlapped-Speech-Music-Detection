@@ -1,5 +1,5 @@
 # data Directory and Paths
-sample_universe_size = 0.001
+sample_universe_size = 0.2
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
 data_file = f"{data_dir}/dataset_{sample_universe_size}.pth"
@@ -27,6 +27,6 @@ hyper_parameters = {
 }
 model_dir = r"./model"
 model_path_1 = f"{model_dir}/model_{sample_universe_size}.pth"
-train_model = False
+train_model = True
 
 plot_output_folder = r"./plots"
