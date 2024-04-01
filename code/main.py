@@ -1,5 +1,6 @@
 from dataloader import dataloader, SignalDataset
-from utils import train, evaluate, calculate_metrics, plot_ROC_AUC_Curve
+from utils import train,evaluate,calculate_metrics,plot_ROC_AUC_Curve, train_classical_model,evaluate_ml_clf,classical_classification
+
 from param import (
     hyper_parameters as hp,
     model_path_1,
@@ -7,9 +8,11 @@ from param import (
     train_model as bool_train_model,
     data_dir,
     sample_universe_size,
-    dataset_path,
-    data_file,
+    dataset_path,data_file, 
     plot_output_folder,
+    classical_model_path_rf,
+    classical_model_path_svm,
+    combination_file_path
 )
 import gc
 from model_architecture import MtlCascadeModel
@@ -18,8 +21,10 @@ import torch
 from torch import nn
 import torch.backends.cudnn as cudnn
 import os
+import pandas as pd
 from dataloader import dataloader, SignalDataset, prepare_data
 from torch.utils.data import ConcatDataset
+from joblib import load
 
 # from torch.optim.lr_scheduler import ExponentialLR
 
@@ -27,9 +32,13 @@ from torch.utils.data import ConcatDataset
 def load_train_test():
     if os.path.exists(data_file):
         combined_dataset = torch.load(data_file)
+        combination_paths = prepare_data(dataset_path,combination_file_path)
+        sampled_df = combination_paths.sample(
+            frac=sample_universe_size, random_state=42, ignore_index=True
+        )
     else:
         # Prepare data
-        combination_paths = prepare_data(dataset_path)
+        combination_paths = prepare_data(dataset_path,combination_file_path)
         sampled_df = combination_paths.sample(
             frac=sample_universe_size, random_state=42, ignore_index=True
         )
@@ -119,44 +128,82 @@ if __name__ == "__main__":
 
     # Create an instance of your model
     print("Initializing the model\n")
-    model = MtlCascadeModel(hp)  # without weight
+    model = MtlCascadeModel(hp) # without weight
 
     if bool_train_model:
         # model training, comment if only evaluation is needed
         model = training(model, device, train_loader, hp)
         model.cpu()
-        # with weight
+        classical_model_rm = train_classical_model(train_loader,model_type="rf")
+        classical_model_svm = train_classical_model(train_loader,model_type="svm")
+        #with weight
+
     else:
         # Load the state dict onto the model
         state_dict = torch.load(model_path_1)
         model.load_state_dict(state_dict)
-
-    # evaluation for trained model
-    (
-        su_predictions,
-        mu_predictions,
-        smr_predictions,
-        su_target,
-        mu_target,
-        smr_target,
-    ) = evaluate(model, test_loader, device)
-
-    for item in ["speech", "music", "mixed"]:
+        classical_model_svm = load(classical_model_path_svm)
+        classical_model_rm = load(classical_model_path_rf)
+        
+    
+    # Evaluate the model
+    su_predictions, mu_predictions, smr_predictions, su_target, mu_target, smr_target = evaluate(model, test_loader,device)
+    su_predictions_svm, mu_predictions_svm, smr_predictions_svm, su_target_svm, mu_target_svm, smr_target_svm = evaluate_ml_clf(test_loader,classical_model_svm)
+    su_predictions_rf, mu_predictions_rf, smr_predictions_rf, su_target_rf, mu_target_rf, smr_target_rf = evaluate_ml_clf(test_loader,classical_model_rm)
+    su_predictions_classical, mu_predictions_classical, smr_predictions_classical, su_target_classical, mu_target_classical, smr_target_classical = classical_classification(combination_file_path)
+    results = []
+    for item in ["speech","music","mixed"]:
         if item == "speech":
-            predictions = su_predictions
-            targets = su_target
+            predictions_mtl = su_predictions
+            targets_mtl = su_target
+            predictions_rf = su_predictions_rf
+            targets_rf = su_target_rf
+            predictions_svm = su_predictions_svm
+            targets_svm = su_target_svm
+            precision_classical = su_predictions_classical
+            targets_classical = su_target_classical
         elif item == "music":
-            predictions = mu_predictions
-            targets = mu_target
+            predictions_mtl = mu_predictions
+            targets_mtl = mu_target
+            predictions_rf = mu_predictions_rf
+            targets_rf = mu_target_rf
+            predictions_svm = mu_predictions_svm
+            targets_svm = mu_target_svm
+            precision_classical = mu_predictions_classical
+            targets_classical = mu_target_classical
         else:
-            predictions = smr_predictions
-            targets = smr_target
-        precision, recall, f1_score, accuracy = calculate_metrics(predictions, targets)
-        print(f"Precision for {item}:", precision)
-        print(f"Recall for {item}:", recall)
-        print(f"F1 score for {item}:", f1_score)
-        print(f"Accuracy for {item}:", accuracy)
-        print(f"\nCreating ROC AUC curve for class: {item}")
-        plot_ROC_AUC_Curve(predictions, targets, item, plot_output_folder)
+            predictions_mtl = smr_predictions
+            targets_mtl = smr_target
+            predictions_rf = smr_predictions_rf
+            targets_rf = smr_target_rf
+            predictions_svm = smr_predictions_svm
+            targets_svm = smr_target_svm
+            precision_classical = smr_predictions_classical
+            targets_classical = smr_target_classical
 
-        print("-------------------------------------------------\n")
+        print(f"-----------------------Classical Thresolding--------------------------\n")
+        precision, recall, f1_score,accuracy  = calculate_metrics(precision_classical, targets_classical)
+        print(f"Creating ROC AUC curve for class: {item}")
+        plot_ROC_AUC_Curve(predictions_mtl,targets_mtl,f'Thresold Model {item}',plot_output_folder)
+        results.append(['Thresold Model', item, precision, recall, f1_score, accuracy])
+
+        print("-----------------------MTL DL Model--------------------------\n")
+        precision, recall, f1_score,accuracy  = calculate_metrics(predictions_mtl, targets_mtl)
+        print(f"Creating ROC AUC curve for class: {item}")
+        plot_ROC_AUC_Curve(predictions_mtl,targets_mtl,f'MTL Model {item}',plot_output_folder)
+        results.append(['MTL Model', item, precision, recall, f1_score, accuracy])
+
+        print("-----------------------Classical ML Model: SVM--------------------------\n")
+        precision, recall, f1_score,accuracy  = calculate_metrics(predictions_svm, targets_svm)
+        print(f"Creating ROC AUC curve for class: {item}")
+        plot_ROC_AUC_Curve(predictions_mtl,targets_mtl,f'SVM Model {item}',plot_output_folder)
+        results.append(['SVM', item, precision, recall, f1_score, accuracy])
+        print("-----------------------Classical ML Model: Random Forest--------------------------\n")
+        precision, recall, f1_score,accuracy  = calculate_metrics(predictions_rf, targets_rf)
+        print(f"Creating ROC AUC curve for class: {item}")
+        plot_ROC_AUC_Curve(predictions_mtl,targets_mtl,f'Random Forest Model {item}',plot_output_folder)
+        results.append(['Random Forest', item, precision, recall, f1_score, accuracy])
+   
+    df = pd.DataFrame(results, columns=['Model', 'Item', 'Precision', 'Recall', 'F1 Score', 'Accuracy'])
+    print(df)
+    df.to_csv(f"evaluation_results.csv", index=False)

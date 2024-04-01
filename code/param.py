@@ -3,6 +3,7 @@ sample_universe_size = 0.2
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
 data_file = f"{data_dir}/dataset_{sample_universe_size}.pth"
+combination_file_path = f"{data_dir}/speech_music_combinations.csv"
 
 # Data Prep Parameters
 types_allowed = ["music", "speech"]
@@ -27,6 +28,8 @@ hyper_parameters = {
 }
 model_dir = r"./model"
 model_path_1 = f"{model_dir}/model_{sample_universe_size}.pth"
-train_model = True
+classical_model_path_svm = f"{model_dir}/svm_model_{sample_universe_size}.pth"
+classical_model_path_rf = f"{model_dir}/rf_model_{sample_universe_size}.pth"
+train_model = False
 
 plot_output_folder = r"./plots"
