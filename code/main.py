@@ -1,5 +1,6 @@
 from dataloader import dataloader, SignalDataset
-from utils import train,evaluate,calculate_metrics,plot_ROC_AUC_Curve,  train_classical_model,evaluate_ml_clf,classical_classification
+from utils import train,evaluate,calculate_metrics,plot_ROC_AUC_Curve, train_classical_model,evaluate_ml_clf,classical_classification
+
 from param import (
     hyper_parameters as hp,
     model_path_1,
@@ -16,7 +17,6 @@ from param import (
 import gc
 from model_architecture import MtlCascadeModel
 from torch.optim import Adam, SGD
-# from torch.optim.lr_scheduler import ExponentialLR
 import torch
 from torch import nn
 import torch.backends.cudnn as cudnn
@@ -25,6 +25,8 @@ import pandas as pd
 from dataloader import dataloader, SignalDataset, prepare_data
 from torch.utils.data import ConcatDataset
 from joblib import load
+
+# from torch.optim.lr_scheduler import ExponentialLR
 
 
 def load_train_test():
@@ -41,15 +43,26 @@ def load_train_test():
             frac=sample_universe_size, random_state=42, ignore_index=True
         )
         print("Creating datasets")
-        for item in ["speech","music","mixture"]:
+        for item in ["speech", "music", "mixture"]:
+            indiv_datafile = f"{data_dir}/dataset_{item}_{sample_universe_size}.pth"
+            if os.path.exists(indiv_datafile):
+                print(f"{item} dataset already exists")
+                continue
+            print(f"Creating {item} dataset")
             dataset = SignalDataset(sampled_df, data_type=item)
             torch.save(dataset, f"{data_dir}/dataset_{item}_{sample_universe_size}.pth")
             del dataset
             gc.collect()
         # Create a combined dataset
-        datasets_music = torch.load(f"{data_dir}/dataset_music_{sample_universe_size}.pth")
-        datasets_speech = torch.load(f"{data_dir}/dataset_speech_{sample_universe_size}.pth")
-        datasets_mixture = torch.load(f"{data_dir}/dataset_mixture_{sample_universe_size}.pth")
+        datasets_music = torch.load(
+            f"{data_dir}/dataset_music_{sample_universe_size}.pth"
+        )
+        datasets_speech = torch.load(
+            f"{data_dir}/dataset_speech_{sample_universe_size}.pth"
+        )
+        datasets_mixture = torch.load(
+            f"{data_dir}/dataset_mixture_{sample_universe_size}.pth"
+        )
 
         combined_dataset = ConcatDataset(
             [datasets_music, datasets_speech, datasets_mixture]
@@ -59,12 +72,13 @@ def load_train_test():
         print("Saved the combined dataset\n")
     return combined_dataset
 
-def training(model,device,train_loader,hp):
+
+def training(model, device, train_loader, hp):
     # Move model to GPU if available
     model.to(device)
 
     print("Training the model\n")
-    #Defining Loss functions
+    # Defining Loss functions
     loss_sp = nn.BCEWithLogitsLoss()
     loss_mu = nn.BCEWithLogitsLoss()
     loss_smr = nn.BCEWithLogitsLoss()
@@ -77,12 +91,20 @@ def training(model,device,train_loader,hp):
 
     for epoch in range(1, hp["n_epochs"] + 1):
         train(
-            train_loader, model, epoch, out_dict, loss_sp, loss_mu, loss_smr, optimizer, device
+            train_loader,
+            model,
+            epoch,
+            out_dict,
+            loss_sp,
+            loss_mu,
+            loss_smr,
+            optimizer,
+            device,
         )  # noqa
 
-    
     torch.save(model.state_dict(), model_path_1)
     return model
+
 
 if __name__ == "__main__":
     # Check if GPU is available
@@ -92,10 +114,9 @@ if __name__ == "__main__":
     if device.type == "cuda":
         cudnn.benchmark = True
 
-
     print("Using device:", device)
 
-    #load combination dataset of music, speech and mixture
+    # load combination dataset of music, speech and mixture
     combined_dataset = load_train_test()
 
     train_loader, test_loader = dataloader(
@@ -107,17 +128,16 @@ if __name__ == "__main__":
 
     # Create an instance of your model
     print("Initializing the model\n")
-    
-    
     model = MtlCascadeModel(hp) # without weight
 
     if bool_train_model:
-        #model training, comment if only evaluation is needed
-        model = training(model,device,train_loader,hp)    
+        # model training, comment if only evaluation is needed
+        model = training(model, device, train_loader, hp)
         model.cpu()
         classical_model_rm = train_classical_model(train_loader,model_type="rf")
         classical_model_svm = train_classical_model(train_loader,model_type="svm")
         #with weight
+
     else:
         # Load the state dict onto the model
         state_dict = torch.load(model_path_1)

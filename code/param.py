@@ -1,5 +1,5 @@
 # data Directory and Paths
-sample_universe_size = 0.001
+sample_universe_size = 0.2
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
 data_file = f"{data_dir}/dataset_{sample_universe_size}.pth"
