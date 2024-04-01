@@ -8,7 +8,10 @@ import pandas as pd
 from itertools import product
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
-
+from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier
+from joblib import dump
+from sklearn.decomposition import PCA
 from param import (
     dataset_path,
     sample_universe_size,
@@ -18,8 +21,11 @@ from param import (
     frame_size,
     decibel_range,
     types_allowed,
-    targ_dict
+    targ_dict,classical_model_path_rf,
+    classical_model_path_svm,
+    combination_file_path
 )
+
 
 def change_volume(audio_signal, sr, change_db):
     # Calculate the amplitude ratio from the decibel change
@@ -68,7 +74,10 @@ def load_audio(audio_path):
         print("Converted stereo audio to mono")
     return audio, sr
 
-def prepare_data(dataset_path):
+def prepare_data(dataset_path,combination_file_path):
+    if os.path.exists(combination_file_path):
+        df_combined = pd.read_csv(combination_file_path)
+        return df_combined
     data_list = []
     for type_folder in os.listdir(dataset_path):
         if type_folder in types_allowed:
@@ -84,6 +93,7 @@ def prepare_data(dataset_path):
     # Generate all combinations of music and speech paths
     combinations = product(df_music['path'], df_speech['path'])
     df_combined = pd.DataFrame(combinations, columns=['music', 'speech'])
+    df_combined.to_csv(combination_file_path, index=False)
 
     return df_combined
 
@@ -191,6 +201,124 @@ def calculate_metrics(predictions, targets):
     f1_score = 2 * (precision * recall) / (precision + recall + 1e-10)
     accuracy = torch.sum(predictions == targets).float() / targets.numel()
     return precision.item(), recall.item(), f1_score.item(),accuracy.item()
+
+def prediction_thresold(data):
+    if round(np.mean(data),2) > 0:
+        prediction = 'music'
+    elif round(np.mean(data),2) > -2.5:
+        prediction = 'mixture'
+    else:
+        prediction = 'speech'
+    return prediction
+        
+
+def classical_classification(csv_filepath):
+    sampled_df = prepare_data(csv_filepath,combination_file_path).sample(frac=sample_universe_size, random_state=42,ignore_index=True)
+    for i in range(len(sampled_df)):
+        speech_wave = load_music(sampled_df.iloc[i]["speech"])
+        music_wave = load_music(sampled_df.iloc[i]["music"])
+        mixed_wave = mix_signals(sampled_df.iloc[i]["speech"],sampled_df.iloc[0]["music"])
+        #hpss_classification(speech_wave,music_wave,mixed_wave,sampling_rate)
+        harmonic_speech,_ = librosa.effects.hpss(speech_wave)
+        harmonic_music, _ = librosa.effects.hpss(music_wave)
+        harmonic_mixture, _ = librosa.effects.hpss(mixed_wave)
+        label_dict = {"speech": 0, "music": 1, "mixture": 2}
+        su_groundTruth = []
+        mu_groundTruth = []
+        smr_groundTruth = []
+        su_predictions = []
+        mu_predictions = []
+        smr_predictions = []
+        for ground_truth in ['music','mixture','speech']:
+            if ground_truth == 'music':
+                data = harmonic_music
+                su_groundTruth.append(label_dict[ground_truth])
+                su_predictions.append(label_dict[prediction_thresold(data)])
+            elif ground_truth == 'mixture':
+                data = harmonic_mixture
+                mu_groundTruth.append(label_dict[ground_truth])
+                mu_predictions.append(label_dict[prediction_thresold(data)])
+            elif ground_truth == 'speech':
+                data = harmonic_speech
+                smr_groundTruth.append(label_dict[ground_truth])
+                smr_predictions.append(label_dict[prediction_thresold(data)])
+
+    return su_predictions, mu_predictions, smr_predictions, su_groundTruth, mu_groundTruth, smr_groundTruth
+
+def train_classical_model(train_loader,model_type = 'svm'):
+    if model_type == 'svm':
+        clf = svm.SVC()
+        classical_model_path = classical_model_path_svm
+    elif model_type == 'rf':
+        clf =  RandomForestClassifier()
+        classical_model_path = classical_model_path_rf
+    else:
+        raise ValueError("Invalid model type. Please choose either 'svm' or 'rf'")
+    # Loop over the data in the train_loader
+    label_dict = {"speech": 0, "music": 1, "mixture": 2}
+    feature = []
+    target = []
+    for data, labels in train_loader:
+        #flatten the data
+        data_flat = data.view(data.size(0), -1)
+        #usie lable list to convert the labels to integers
+        labels_int = [label_dict[label] for label in labels]
+        feature.extend(data_flat)
+        target.extend(labels_int)
+
+    feature = np.array(feature)
+    target = np.array(target)
+    
+
+    #Applying PCA for dimentionality reduction
+    pca = PCA(n_components=2) 
+    feature = pca.fit_transform(feature)
+    # Train the SVM classifier
+    clf.fit(feature, target)
+    # Save the trained SVM classifier
+    dump(clf, classical_model_path) 
+
+    return clf
+
+def evaluate_ml_clf(test_loader, clf):
+    label_dict = {"speech": 0, "music": 1, "mixture": 2}
+
+    feature = []
+    target = []
+
+    for data, labels in test_loader:
+        #flatten the data
+        data_flat = data.view(data.size(0), -1)
+        #usie lable list to convert the labels to integers
+        labels_int = [label_dict[label] for label in labels]
+        feature.extend(data_flat)
+        target.extend(labels_int)
+    
+    
+    
+    feature = np.array(feature)
+    target = np.array(target)
+    pca = PCA(n_components=2) 
+    feature = pca.fit_transform(feature)
+
+    su_groundTruth = []
+    mu_groundTruth = []
+    smr_groundTruth = []
+    su_predictions = []
+    mu_predictions = []
+    smr_predictions = []
+    for i in range(len(target)):
+        if target[i] == 0:
+            su_groundTruth.append(1)
+            su_predictions.append(clf.predict(feature[i].reshape(1, -1))[0])
+
+        elif target[i] == 1:
+            mu_groundTruth.append(1)
+            mu_predictions.append(clf.predict(feature[i].reshape(1, -1))[0])
+        else:
+            smr_groundTruth.append(1)
+            smr_predictions.append(clf.predict(feature[i].reshape(1, -1))[0])
+    return su_predictions, mu_predictions, smr_predictions, su_groundTruth, mu_groundTruth, smr_groundTruth
 
 
 def plot_ROC_AUC_Curve(predictions, targets, class_name, output_folder):
