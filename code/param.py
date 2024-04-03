@@ -1,5 +1,5 @@
 # data Directory and Paths
-sample_universe_size = 0.2
+sample_universe_size = 0.001
 data_dir = r"./data"
 dataset_path = f"{data_dir}/musan"
 data_file = f"{data_dir}/dataset_{sample_universe_size}.pth"
@@ -32,4 +32,6 @@ classical_model_path_svm = f"{model_dir}/svm_model_{sample_universe_size}.pth"
 classical_model_path_rf = f"{model_dir}/rf_model_{sample_universe_size}.pth"
 train_model = False
 
-plot_output_folder = r"./plots"
+eval_dir = r"./evaluations"
+plot_output_folder = f"{eval_dir}/plots"
+eval_file = f"{eval_dir}/eval_{sample_universe_size}.csv"

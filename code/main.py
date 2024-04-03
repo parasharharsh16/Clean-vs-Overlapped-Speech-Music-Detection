@@ -1,5 +1,6 @@
 from dataloader import dataloader, SignalDataset
-from utils import train,evaluate,calculate_metrics,plot_ROC_AUC_Curve, train_classical_model,evaluate_ml_clf,classical_classification
+from utils import (train,evaluate,calculate_metrics,plot_ROC_AUC_Curve,
+train_classical_model,evaluate_ml_clf,classical_classification,prepare_data)
 
 from param import (
     hyper_parameters as hp,
@@ -12,7 +13,8 @@ from param import (
     plot_output_folder,
     classical_model_path_rf,
     classical_model_path_svm,
-    combination_file_path
+    combination_file_path,
+    eval_file
 )
 import gc
 from model_architecture import MtlCascadeModel
@@ -22,7 +24,7 @@ from torch import nn
 import torch.backends.cudnn as cudnn
 import os
 import pandas as pd
-from dataloader import dataloader, SignalDataset, prepare_data
+from dataloader import dataloader, SignalDataset
 from torch.utils.data import ConcatDataset
 from joblib import load
 
@@ -127,7 +129,7 @@ if __name__ == "__main__":
     )
 
     # Create an instance of your model
-    print("Initializing the model\n")
+    print("Initializing the MTL model\n")
     model = MtlCascadeModel(hp) # without weight
 
     if bool_train_model:
@@ -145,11 +147,15 @@ if __name__ == "__main__":
         classical_model_svm = load(classical_model_path_svm)
         classical_model_rm = load(classical_model_path_rf)
         
+        
     
     # Evaluate the model
+    print("Evaluating the MTL model\n")
     su_predictions, mu_predictions, smr_predictions, su_target, mu_target, smr_target = evaluate(model, test_loader,device)
+    print("Evaluating the classical models\n")
     su_predictions_svm, mu_predictions_svm, smr_predictions_svm, su_target_svm, mu_target_svm, smr_target_svm = evaluate_ml_clf(test_loader,classical_model_svm)
     su_predictions_rf, mu_predictions_rf, smr_predictions_rf, su_target_rf, mu_target_rf, smr_target_rf = evaluate_ml_clf(test_loader,classical_model_rm)
+    print("Evaluating the classical thresolding model\n")
     su_predictions_classical, mu_predictions_classical, smr_predictions_classical, su_target_classical, mu_target_classical, smr_target_classical = classical_classification(combination_file_path)
     results = []
     for item in ["speech","music","mixed"]:
@@ -206,4 +212,4 @@ if __name__ == "__main__":
    
     df = pd.DataFrame(results, columns=['Model', 'Item', 'Precision', 'Recall', 'F1 Score', 'Accuracy'])
     print(df)
-    df.to_csv(f"evaluation_results.csv", index=False)
+    df.to_csv(eval_file, index=False)
