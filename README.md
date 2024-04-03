@@ -50,7 +50,7 @@ Speech-Understanding-Minor/
 P.S. Do not move to code folder to run the project
 
 ### Results
-- The results are in the '''evaluations''' folder
+- The results are in the `evaluations` folder
 - csv files contains the evaluation table for all models (for given sample size)
 - plots folder contains AUC ROC plots for all models
 
