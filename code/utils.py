@@ -25,6 +25,10 @@ from param import (
     classical_model_path_svm,
     combination_file_path
 )
+from scipy import stats
+import multiprocessing as mp
+
+
 
 
 def change_volume(audio_signal, sr, change_db):
@@ -202,49 +206,92 @@ def calculate_metrics(predictions, targets):
     accuracy = torch.sum(predictions == targets).float() / targets.numel()
     return precision.item(), recall.item(), f1_score.item(),accuracy.item()
 
-def prediction_thresold(data):
-    if round(np.mean(data),2) > 0:
-        prediction = 'music'
-    elif round(np.mean(data),2) > -2.5:
-        prediction = 'mixture'
+def prediction_thresold(skew_harmonic, skew_percussive):
+    skew_percussive = round(np.mean(skew_percussive).real*10000,2)
+    skew_harmonic = round(np.mean(skew_harmonic).real*10000,2)
+    if skew_harmonic < 0 and skew_percussive > 0:
+        return 'speech'
+    elif abs(skew_percussive) < 1:
+        return 'music'
     else:
-        prediction = 'speech'
-    return prediction
-        
+        return 'mixture'
 
-def classical_classification(csv_filepath):
-    sampled_df = prepare_data(csv_filepath,combination_file_path).sample(frac=sample_universe_size, random_state=42,ignore_index=True)
-    for i in range(len(sampled_df)):
-        speech_wave = load_music(sampled_df.iloc[i]["speech"])
-        music_wave = load_music(sampled_df.iloc[i]["music"])
-        mixed_wave = mix_signals(sampled_df.iloc[i]["speech"],sampled_df.iloc[0]["music"])
-        #hpss_classification(speech_wave,music_wave,mixed_wave,sampling_rate)
-        harmonic_speech,_ = librosa.effects.hpss(speech_wave)
-        harmonic_music, _ = librosa.effects.hpss(music_wave)
-        harmonic_mixture, _ = librosa.effects.hpss(mixed_wave)
-        label_dict = {"speech": 0, "music": 1, "mixture": 2}
-        su_groundTruth = []
-        mu_groundTruth = []
-        smr_groundTruth = []
-        su_predictions = []
-        mu_predictions = []
-        smr_predictions = []
-        for ground_truth in ['music','mixture','speech']:
-            if ground_truth == 'music':
-                data = harmonic_music
-                su_groundTruth.append(label_dict[ground_truth])
-                su_predictions.append(label_dict[prediction_thresold(data)])
-            elif ground_truth == 'mixture':
-                data = harmonic_mixture
-                mu_groundTruth.append(label_dict[ground_truth])
-                mu_predictions.append(label_dict[prediction_thresold(data)])
-            elif ground_truth == 'speech':
-                data = harmonic_speech
-                smr_groundTruth.append(label_dict[ground_truth])
-                smr_predictions.append(label_dict[prediction_thresold(data)])
+        
+def hpss_decomposition(signal, sr, lharm=17, lperc=17):
+    """
+    Perform Harmonic-Percussive Source Separation (HPSS) on the given signal.
+    """
+    S = librosa.stft(signal)
+    harmonic, percussive = librosa.decompose.hpss(S, margin=(1.0, 1.0), kernel_size=(lharm, lperc))
+    return harmonic, percussive
+
+def compute_skewness(matrix, axis):
+    """
+    Compute the skewness of each row or column in the given matrix.
+    """
+    return stats.skew(matrix, axis=axis)
+
+def classify_signal(harmonic, percussive, sr):
+    """
+    Classify the signal into music, speech, or mixture based on thresholds.
+    """
+    # Convert to Mel spectrograms
+    mel_harmonic = librosa.feature.melspectrogram(S=np.abs(harmonic), sr=sr)
+    mel_percussive = librosa.feature.melspectrogram(S=np.abs(percussive), sr=sr)
+
+    # Compute skewness
+    rskew_harmonic = compute_skewness(mel_harmonic, axis=1)
+    cskew_percussive = compute_skewness(mel_percussive, axis=0)
+
+    # Average skewness values
+    avg_rskew_harmonic = np.mean(rskew_harmonic)
+    avg_cskew_percussive = np.mean(cskew_percussive)
+
+    return avg_rskew_harmonic, avg_cskew_percussive
+def worker(row):
+    speech_wave = load_music(row["speech"])
+    music_wave = load_music(row["music"])
+    mixed_wave = mix_signals(row["speech"], row["music"])
+
+    avg_rskew_harmonic_speech, avg_cskew_percussive_speech = hpss_decomposition(speech_wave, 16000)
+    avg_rskew_harmonic_music, avg_cskew_percussive_music = hpss_decomposition(music_wave, 16000)
+    avg_rskew_harmonic_mixed, avg_cskew_percussive_mixed = hpss_decomposition(mixed_wave, 16000)
+
+    label_dict = {"speech": 0, "music": 1, "mixture": 2}
+    
+
+    for ground_truth in ['music','mixture','speech']:
+        if ground_truth == 'music':
+            su_groundTruth = label_dict[ground_truth]
+            su_predictions = label_dict[prediction_thresold(avg_rskew_harmonic_music, avg_cskew_percussive_music)]
+        elif ground_truth == 'mixture':
+            mu_groundTruth = label_dict[ground_truth]
+            mu_predictions = label_dict[prediction_thresold(avg_rskew_harmonic_mixed, avg_cskew_percussive_mixed)]
+        elif ground_truth == 'speech':
+            smr_groundTruth = label_dict[ground_truth]
+            smr_predictions = label_dict[prediction_thresold(avg_rskew_harmonic_speech, avg_cskew_percussive_speech)]
 
     return su_predictions, mu_predictions, smr_predictions, su_groundTruth, mu_groundTruth, smr_groundTruth
 
+def classical_classification(csv_filepath):
+    sampled_df = prepare_data(csv_filepath,combination_file_path).sample(frac=sample_universe_size, random_state=42,ignore_index=True)
+
+    with mp.Pool(mp.cpu_count()) as pool:
+        results = pool.map(worker, [row for _, row in sampled_df.iterrows()])
+    su_groundTruth = []
+    mu_groundTruth = []
+    smr_groundTruth = []
+    su_predictions = []
+    mu_predictions = []
+    smr_predictions = []
+    for result in results:
+        su_predictions.append(result[0])
+        mu_predictions.append(result[1])
+        smr_predictions.append(result[2])
+        su_groundTruth.append(result[3])
+        mu_groundTruth.append(result[4])
+        smr_groundTruth.append(result[5])
+    return su_predictions, mu_predictions, smr_predictions, su_groundTruth, mu_groundTruth, smr_groundTruth
 def train_classical_model(train_loader,model_type = 'svm'):
     if model_type == 'svm':
         clf = svm.SVC()
