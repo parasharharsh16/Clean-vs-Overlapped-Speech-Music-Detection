@@ -26,7 +26,7 @@ hyper_parameters = {
     "train_ratio": 0.8,
 }
 model_dir = r"./model"
-model_path_1 = f"{model_dir}/model_{sample_universe_size}.pth"
+model_path_1 = f"{model_dir}/mtl_model_{sample_universe_size}.pth"
 train_model = True
 
 plot_output_folder = r"./plots"
