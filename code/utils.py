@@ -28,9 +28,6 @@ from param import (
 from scipy import stats
 import multiprocessing as mp
 
-
-
-
 def change_volume(audio_signal, sr, change_db):
     # Calculate the amplitude ratio from the decibel change
     amplitude_ratio = 10 ** (change_db / 20)
