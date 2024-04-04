@@ -147,7 +147,6 @@ if __name__ == "__main__":
         classical_model_svm = load(classical_model_path_svm)
         classical_model_rm = load(classical_model_path_rf)
         
-        
     
     # Evaluate the model
     print("Evaluating the MTL model\n")
