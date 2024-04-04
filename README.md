@@ -3,6 +3,20 @@
 ## Description
 This project is build intended to submit as Minor Project for Speech Understanding class at IIT, Jodhpur. 
 
+## Models
+
+| % Data Trained On | Model Name        | Download Link                                            |
+|-------------------|-------------------|----------------------------------------------------------|
+| <span rowspan="4">1%</span> | SVM         | [Download](https://drive.google.com/file/d/16Id52KwD329F1U80gu_ejRfEs1fUE2XZ/view?usp=sharing)   |
+|                            | Random Forest           | [Download](https://drive.google.com/file/d/1Zk7Fc1ATHvk2Vks9UotK-7C2I3ABd5IM/view?usp=sharing)   |
+|                            | MTL           | [Download](https://drive.google.com/file/d/1MNFrtTw3sK74l-2GBET4dqOqHSoPmrIJ/view?usp=sharing)   |
+| <span rowspan="4">5%</span> | SVM          | [Download](https://drive.google.com/file/d/1YllEKWk1ELSHOFiatARf7hD1PGYtVQO6/view?usp=sharing)   |
+|                            | Random Forest         | [Download](https://drive.google.com/file/d/1KmbZwM24xVHiSKXl0xLONO4QjWp_C-y7/view?usp=sharing)   |
+|                            | MTL         | [Download](https://drive.google.com/file/d/1QCg9xj3lr87jxblI4aDWGta4VaLuduCh/view?usp=sharing)   |
+| <span rowspan="4">10%</span> | SVM           | [Download](https://example.com/model1_70.tar.gz)   |
+|                            | Random Forest          | [Download](https://example.com/model2_90.tar.gz)   |
+|                            | MTL          | [Download](https://example.com/model3_90.tar.gz)   |
+
 ## Project Setup and Uses Steps
 ### Installation
 To install and run this project, follow these steps:
