@@ -13,9 +13,12 @@ This project is build intended to submit as Minor Project for Speech Understandi
 | <span rowspan="4">5%</span> | SVM          | [Download](https://drive.google.com/file/d/1YllEKWk1ELSHOFiatARf7hD1PGYtVQO6/view?usp=sharing)   |
 |                            | Random Forest         | [Download](https://drive.google.com/file/d/1KmbZwM24xVHiSKXl0xLONO4QjWp_C-y7/view?usp=sharing)   |
 |                            | MTL         | [Download](https://drive.google.com/file/d/1QCg9xj3lr87jxblI4aDWGta4VaLuduCh/view?usp=sharing)   |
-| <span rowspan="4">10%</span> | SVM           | [Download](https://example.com/model1_70.tar.gz)   |
-|                            | Random Forest          | [Download](https://example.com/model2_90.tar.gz)   |
-|                            | MTL          | [Download](https://example.com/model3_90.tar.gz)   |
+| <span rowspan="4">10%</span> | SVM           | [Download](https://drive.google.com/file/d/1hzvi3enSFl84zqXSlyZ-z6mhgX-dxbNR/view?usp=sharing)   |
+|                            | Random Forest          | [Download](https://drive.google.com/file/d/1Zk7Fc1ATHvk2Vks9UotK-7C2I3ABd5IM/view?usp=sharing)   |
+|                            | MTL          | [Download](https://drive.google.com/file/d/1MNFrtTw3sK74l-2GBET4dqOqHSoPmrIJ/view?usp=sharing)   |
+| <span rowspan="4">20%</span> | SVM           | [Download](https://drive.google.com/file/d/1q3XRq7lMx7oSsQvdNwymTH0EAgU5ttkS/view?usp=sharing)   |
+|                            | Random Forest          | [Download](https://drive.google.com/file/d/1Iw7dCFCKpBFP3J4QCTAF4UtjnuOAVmT_/view?usp=sharing)   |
+|                            | MTL          | [Download](https://drive.google.com/file/d/18KUJT2O3dUk0529PTtS0079-AzVOlK9V/view?usp=sharing)   |
 
 ## Project Setup and Uses Steps
 ### Installation
@@ -26,6 +29,8 @@ To install and run this project, follow these steps:
 3. Create conda (use miniconda or anaconda) environment ```conda create --prefix ./.venv python=3.9```
 4. Activate conda environment ```conda activate ./.venv```
 3. Install the required dependencies: ```pip install -r requirements.txt```
+4. Download models from the links provided below and place them inside models folder. NB - don't change the name of model files.
+5. Change train model to false in params.py under code to run just evaluations(test).
 
 ### Prepare Dataset
 To download the "MUSAN" dataset, please follow the below link:
